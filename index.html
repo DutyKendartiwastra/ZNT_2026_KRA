@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZNT Kab.Karanganyar</title>
+</head>
+<body>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.24/esri/themes/dark/main.css"/>
+    <script src="https://js.arcgis.com/4.24/"></script>
+    <script>src="https://code.jquery.com/jquery-3.6.1.min.js"</script>
+    <!-- Setting Halaman Full Screen -->
+    <style>
+     html,
+     body,
+     #viewDiv_Vektor {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+        width: 100%;
+      }
+     #layerToggle {
+        bottom: -10%;
+        left: 55px;
+        position:absolute;
+        z-index: 99;
+        background-color: white;
+        border-radius: 8px;
+        padding: 10px;
+        opacity: 0.75;
+      }
+     #viewDiv {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+        width: 100%;
+      }
+      #sidebar {
+        z-index: 99;
+        position: absolute;
+        top: 10px;
+        left: 60px;
+        height: 6%;
+        background: rgba(0, 0, 0, 0.3);
+        width: 340px;
+      }
+      #sidebar2 {
+        z-index: 99;
+        position: absolute;
+        top: 550px;
+        left: 0px;
+        height: 13%;
+        background: rgba(240, 248, 254, 0);
+        width: 400px;
+      }
+
+    .coordinate-input {
+      position: fixed;
+      bottom: 80px;
+      left: 15px;
+      z-index: 100;
+
+      background-color: rgba(60,61,55,1);
+      padding: 6px 10px;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+    }
+
+    .toggle-btn {
+      position: fixed;
+      bottom: 40px;
+      left: 15px;
+      z-index: 100;
+
+      background-color: rgba(60,61,55,1);
+      padding: 6px 10px;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+    }
+
+    .tooltip {
+     z-index: 1000;
+     position: absolute;
+     background: white;
+     border: 1px solid #ccc;
+     padding: 5px;
+     font-size: 12px;
+     display: none;
+     pointer-events: none;
+     }
+
+    </style>
+    <!-- SETTING PASSWORD -->
+    
+    <!-- Mulai Coding Javascript -->
+    <script>
+     require([
+     "esri/Map",
+     "esri/views/MapView",
+     "esri/layers/GeoJSONLayer",
+     "esri/widgets/BasemapToggle",
+     "esri/widgets/Expand",
+     "esri/widgets/Legend",
+     "esri/popup/content/AttachmentsContent",
+     "esri/popup/content/ExpressionContent",
+     "esri/popup/content/TextContent",
+     "esri/rest/query/support/AttachmentInfo",
+     "esri/widgets/Locate",
+     "esri/layers/ImageryLayer",
+     "esri/widgets/Search",
+     "esri/layers/ImageryTileLayer",
+     "esri/widgets/Compass",
+     "esri/widgets/Swipe",
+     "esri/widgets/ScaleBar",
+     "esri/widgets/LayerList",
+     "esri/layers/GroupLayer",
+     "esri/views/layers/LayerView",
+     "esri/widgets/Fullscreen",
+     "esri/layers/WCSLayer",
+     "esri/layers/MapImageLayer",
+     "esri/layers/WMSLayer",
+     "esri/layers/WFSLayer",
+     "esri/symbols/CIMSymbol",
+     "esri/symbols/support/cimSymbolUtils",
+     "esri/symbols/WebStyleSymbol",
+     "esri/Graphic",
+     "esri/layers/GraphicsLayer",
+     "esri/symbols/SimpleMarkerSymbol",
+     "esri/symbols/PictureMarkerSymbol",
+     "esri/symbols/TextSymbol",
+     "esri/geometry/Point",
+     "esri/widgets/DistanceMeasurement2D"
+     ],(
+      Map,
+      MapView,
+      GeoJSONLayer,
+      BasemapToggle,
+      Expand,
+      Legend,
+      AttachmentsContent,
+      ExpressionContent,
+      TextContent,
+      AttachmentInfo,
+      Locate,
+      ImageryLayer,
+      Search,
+      ImageryTileLayer,
+      Compass,
+      Swipe,
+      ScaleBar,
+      LayerList,
+      GroupLayer,
+      LayerView,
+      Fullscreen,
+      WCSLayer,
+      MapImageLayer,
+      WMSLayer,
+      WFSLayer,
+      CIMSymbol,
+      cimSymbolUtils,
+      WebStyleSymbol,
+      Graphic,
+      GraphicsLayer,
+      SimpleMarkerSymbol,
+      PictureMarkerSymbol,
+      TextSymbol,
+      Point,
+      DistanceMeasurement2D,
+      )=>{
+      //Buat Simbologi Batas Admin Api-api
+      const Batas1 = {
+          type: "simple-fill",
+          color:[255, 252, 155,0],
+          outline: {
+            color: [255, 252, 155, 1],
+            width: "1px",
+            style: "solid"
+          }
+        };
+      const renderer_kelurahan = {
+          type: "simple",
+          title:"Batas Bidang Tanah",
+          symbol: Batas1}
+      //Buat Simbologi Batas Kecamatan
+      const BatasKEC = {
+          type: "simple-fill",
+          color:[34, 40, 49,0],
+          outline: {
+            color: [168, 161, 150, 1],
+            width: "3px",
+            style: "short-dash-dot-dot"
+          }
+        };
+      const renderer_BatasKEC = {
+          type: "simple",
+          title:"Batas KEC",
+          symbol: BatasKEC} 
+      
+      //CUSTOMISASI SIMBOL RTRW
+      //Kawasan Permukiman Perkotaan
+      const PERKOTAAN ={
+            type: "cim",
+            data: {
+              type: "CIMSymbolReference",
+              symbol: {
+                // CIM polygon symbol
+                type: "CIMPolygonSymbol",
+                symbolLayers: [{
+                  // light blue outline around the polygon
+                    type: "CIMSolidStroke",
+                    enable: true,
+                    width: 0.8,
+                    color: [233, 239, 236,108]},
+                   // light blue hatch fill
+                   {type: "CIMHatchFill",
+                    enable: true,
+                    lineSymbol: {
+                      type: "CIMLineSymbol", // CIM line symbol that makes up the line inside the hatch fill
+                      symbolLayers: [{
+                          type      : "CIMSolidStroke",
+                          enable    : true,
+                          capStyle  : "Butt",
+                          joinStyle : "Miter",
+                          miterLimit: 10,
+                          width     : 0.5,
+                          color     : [199,37,62,255]
+                      }]
+                    },
+                    rotation: 45, // rotation of the lines
+                    separation: 5 // distance between lines in hatch fill
+                  },
+                  //
+                  {type: "CIMHatchFill",
+                    enable: true,
+                    lineSymbol: {
+                      type: "CIMLineSymbol", // CIM line symbol that makes up the line inside the hatch fill
+                      symbolLayers: [{
+                          type        : "CIMSolidStroke",
+                          enable      : true,
+                          capStyle    : "Butt",
+                          joinStyle   : "Miter",
+                          miterLimit  : 10,
+                          width       : 0.5,
+                          color       : [199,37,62,255]
+                      }]
+                    },
+                    rotation: -45, // rotation of the lines
+                    separation: 5 // distance between lines in hatch fill
+                  },
+                ],
+        }}};
+      //Kawasan Permukiman Perdesaan
+      const PERDESAAN ={
+            type: "cim",
+            data: {
+              type: "CIMSymbolReference",
+              symbol: {
+                // CIM polygon symbol
+                type: "CIMPolygonSymbol",
+                symbolLayers: [{
+                  // light blue outline around the polygon
+                    type: "CIMSolidStroke",
+                    enable: true,
+                    width: 0.8,
+                    color: [233, 239, 236,108]},
+                   // light blue hatch fill
+                   {type: "CIMHatchFill",
+                    enable: true,
+                    lineSymbol: {
+                      type: "CIMLineSymbol", // CIM line symbol that makes up the line inside the hatch fill
+                      symbolLayers: [{
+                          type      : "CIMSolidStroke",
+                          enable    : true,
+                          capStyle  : "Butt",
+                          joinStyle : "Miter",
+                          miterLimit: 10,
+                          width     : 1,
+                          color     : [232, 92, 13,255]
+                      }]
+                    },
+                    rotation: 45, // rotation of the lines
+                    separation: 5 // distance between lines in hatch fill
+                  },
+                  //
+                  {type: "CIMHatchFill",
+                    enable: true,
+                    lineSymbol: {
+                      type: "CIMLineSymbol", // CIM line symbol that makes up the line inside the hatch fill
+                      symbolLayers: [{
+                          type        : "CIMSolidStroke",
+                          enable      : true,
+                          capStyle    : "Butt",
+                          joinStyle   : "Miter",
+                          miterLimit  : 10,
+                          width       : 0.5,
+                          color       : [232,92,13,255]
+                      }]
+                    },
+                    rotation: -45, // rotation of the lines
+                    separation: 5 // distance between lines in hatch fill
+                  },
+                ],
+        }}};
+      //Kawasan Industri
+      const INDUSTRI ={
+            type: "cim",
+            data: {
+              type: "CIMSymbolReference",
+              symbol: {
+                // CIM polygon symbol
+                type: "CIMPolygonSymbol",
+                symbolLayers: [{
+                  // light blue outline around the polygon
+                    type: "CIMSolidStroke",
+                    enable: true,
+                    width: 0.8,
+                    color: [233, 239, 236,108]},
+                   // light blue hatch fill
+                   {type: "CIMHatchFill",
+                    enable: true,
+                    lineSymbol: {
+                      type: "CIMLineSymbol", // CIM line symbol that makes up the line inside the hatch fill
+                      symbolLayers: [{
+                          type      : "CIMSolidStroke",
+                          enable    : true,
+                          capStyle  : "Butt",
+                          joinStyle : "Miter",
+                          miterLimit: 10,
+                          width     : 1,
+                          color     : [182, 146, 194,255]
+                      }]
+                    },
+                    rotation: 45, // rotation of the lines
+                    separation: 5 // distance between lines in hatch fill
+                  },
+                ],
+        }}};
+      //Kawasan Hortikultura
+      const HORTIKULTURA ={
+            type: "cim",
+            data: {
+              type: "CIMSymbolReference",
+              symbol: {
+                // CIM polygon symbol
+                type: "CIMPolygonSymbol",
+                symbolLayers: [{
+                  // light blue outline around the polygon
+                    type: "CIMSolidStroke",
+                    enable: true,
+                    width: 0.8,
+                    color: [233, 239, 236,108]},
+                   // light blue hatch fill
+                   {type: "CIMHatchFill",
+                    enable: true,
+                    lineSymbol: {
+                      type: "CIMLineSymbol", // CIM line symbol that makes up the line inside the hatch fill
+                      symbolLayers: [{
+                          type      : "CIMSolidStroke",
+                          enable    : true,
+                          capStyle  : "Butt",
+                          joinStyle : "Miter",
+                          miterLimit: 10,
+                          width     : 2,
+                          color     : [145, 221, 207,255]
+                      }]
+                    },
+                    rotation: 45, // rotation of the lines
+                    separation: 6 // distance between lines in hatch fill
+                  },
+                ],
+        }}};
+      //Simbologi RTRW
+      const renderer_RTRW={
+        type: "unique-value",
+        legendOptions: {
+         title: "RTRW Kab. Karanganyar Tahun 2019"},
+         field: "NAMOBJ",
+         uniqueValueInfos:[
+          {value:"Kawasan Permukiman Perkotaan",
+           symbol: PERKOTAAN,
+          },
+          {value:"Kawasan Permukiman Perdesaan",
+           symbol: PERDESAAN,
+          },
+          {value:"Sempadan Sungai",
+           symbol: {
+              type: "simple-fill",
+              color: [63, 162, 246,0.5],
+              outline:{
+                color: [233,239,236,80],
+                width: "0.8px",
+                style: "solid"}
+          }},
+          {value:"Kawasan Tanaman Pangan",
+           symbol: {
+              type: "simple-fill",
+              color: [180,227,128,0.5],
+              outline:{
+                color: [233,239,236,80],
+                width: "0.8px",
+                style: "solid"}
+          }},
+          {value:"Sempadan Mata Air",
+           symbol: {
+              type: "simple-fill",
+              color: [15,103,177,0.5],
+              outline:{
+                color: [233,239,236,80],
+                width: "0.8px",
+                style: "solid"}
+          }},
+          {value:"Kawasan Industri",
+           symbol: INDUSTRI,
+          },
+          {value:"Kawasan Hortikultura",
+           symbol: HORTIKULTURA,
+          },
+          {value:"Kawasan Rawan Bencana Gerakan Tanah",
+           symbol: {
+              type: "simple-fill",
+              color: [247, 220, 185,0.5],
+              outline:{
+                color: [233,239,236,80],
+                width: "0.8px",
+                style: "solid"}
+          }},
+          {value:"Kawasan Cagar Budaya",
+           symbol: {
+              type: "simple-fill",
+              color: [233, 239, 236,0.5],
+              outline:{
+                color: [233,239,236,80],
+                width: "0.8px",
+                style: "solid"}
+          }},
+        ]
+      }
+      
+      //Membuat Label Batas Kecamatan
+      const labelBatasKecamatan = {
+        symbol: {
+          type: "text",
+          color: [247, 249, 242],
+          font: {
+            family: "Avenir Next LT Pro Regular",
+            size: 15,
+            weight: "bold"
+          }
+        },
+        labelPlacement: "above-center",
+        labelExpressionInfo: {
+          expression: "$feature.KEC"
+        },
+        minScale: 100000,
+        maxScale: 20000,
+      };
+      //Membuat Label Batas Kelurahan
+      const labelBatasKelurahan = {
+        symbol: {
+          type: "text",
+          color: "#FFFC9B",
+          font: {
+            family: "Avenir Next LT Pro Regular",
+            size: 15,
+            weight: "bold"
+          }
+        },
+        labelPlacement: "above-center",
+        labelExpressionInfo: {
+          expression: "$feature.DESA"
+        },
+        minScale: 20000,
+        maxScale: 5000,
+      };
+      //Simbol Bidang
+      const simbolBidang = {
+      type: "simple-fill",
+      color: [255, 0, 0, 0],
+      outline: {
+        color: [135, 182, 188, 1],
+        width: 1.5
+      }};
+      const rendererBidang = {
+      type: "simple",
+      symbol: simbolBidang
+      };
+      
+      //Pop Up Bidang
+      const popup_bidang = {
+       title: "Bidang Tanah",
+       content: [
+                {
+                  type: "fields",
+                  fieldInfos: [
+                    {
+                      fieldName: "No_Entry",
+                      label: "Nomor Entri"
+                    },
+                    {
+                      fieldName: "Luas_Calc",
+                      label: "Luas (m2)",
+                      format: {
+                        digitSeparator: true,
+                        places: 0}
+                    },
+                    {
+                      fieldName: "L_Depan",
+                      label: "Lebar Depan"
+                    },
+                    {
+                      fieldName: "P_Belakang",
+                      label: "Panjang ke Belakang"
+                    },
+                    {
+                      fieldName: "Jenis",
+                      label: "Jenis"
+                    },
+                    {
+                      fieldName: "Posisi",
+                      label: "Posisi"
+                    },
+                    {
+                      fieldName: "Bentuk",
+                      label: "Bentuk"
+                    }
+                  ]
+                }]
+        };
+      //Pop Up Template RTRW
+      const popup_RTRW={
+        title:"Kawasan : {NAMOBJ}",
+      };
+      //Insert SHP Batas Kecamatan
+      const Batas_Kecamatan=new GeoJSONLayer({
+        url:"https://raw.githubusercontent.com/DutyKendartiwastra/PTP-KRA/main/Batas_kecamatan.geojson",
+        title:"Batas Kecamatan",
+        renderer:renderer_BatasKEC,
+        labelingInfo:labelBatasKecamatan,
+        minScale: 2000000,
+        maxScale: 5000,
+      });
+      //Batas Kelurahan
+      const BatasAdmin_Kelurahan= new GeoJSONLayer({
+        url:"https://raw.githubusercontent.com/DutyKendartiwastra/PTP-KRA/main/Batas_kelurahan.geojson",
+        title:"Batas Desa/Kelurahan",
+        renderer:renderer_kelurahan,
+        labelingInfo:labelBatasKelurahan,
+        minScale: 20000,
+        maxScale: 5000,
+      });
+      //Insert Sample Bidang
+      const BidangSample=new GeoJSONLayer({
+        url:"https://raw.githubusercontent.com/DutyKendartiwastra/ZNT_2026_KRA/main/Sample_Bidang_Lonlat.geojson",
+        title:"Sample Bidang Tanah",
+        popupTemplate:popup_bidang,
+        renderer:rendererBidang,
+        minScale: 20000,
+        maxScale: 1,
+      });
+      //Insert Titik Sample
+      const titiksample=new GeoJSONLayer({
+        url:"https://raw.githubusercontent.com/DutyKendartiwastra/ZNT_2026_KRA/refs/heads/main/Titik_Sample_Lonlat.geojson",
+        title:"Titik Sample",
+        minScale: 20000,
+        maxScale: 1,
+      });
+      //RTRW
+      const RTRW= new GeoJSONLayer({
+        url:"https://raw.githubusercontent.com/DutyKendartiwastra/PTP-KRA/main/RTRW.geojson",
+        title:"RTRW Kabupaten Karanganyar 2019",
+        renderer:renderer_RTRW,
+        visible:false,
+        //popupTemplate:popup_RTRW,
+      });
+      //Fungsi create symbol
+      function createSymbol(color){
+          return {
+            type: "simple-fill",
+            style: "solid",
+            color,
+            outline: null
+          };
+        }
+      // Insert Basemap
+        const map = new Map({
+          basemap: "dark-gray-vector",
+      });
+      // Menampilkan Map ke Bodi HTML
+      const View = new MapView({
+        container: "viewDiv",
+        map: map,
+        zoom:10,
+        center:[110.950309,-7.598174]
+      });
+
+      //HOVER
+       // Tooltip
+          var tooltip = document.getElementById("tooltip");
+
+          View.on("pointer-move", function(event) {
+            View.hitTest(event).then(function(response) {
+              var graphic = response.results.filter(function(result) {
+                return result.graphic.layer === RTRW;
+              })[0]?.graphic;
+
+              if (graphic) {
+                // Ambil field NAMOBJ dari atribut
+                var NAMOBJ = graphic.attributes.NAMOBJ || "Tidak ada data";
+
+                // Menampilkan tooltip dengan informasi dari NAMOBJ
+                tooltip.style.display = "block";
+                tooltip.innerHTML = `<strong>Tata Ruang:</strong> ${NAMOBJ}<br>`;
+                tooltip.style.left = event.x + 10 + "px";
+                tooltip.style.top = event.y + 10 + "px";
+              } else {
+                tooltip.style.display = "none"; // Sembunyikan tooltip jika tidak ada objek yang di-hover
+              }
+            });
+          });
+          
+      //INPUT KOORDINAT
+          //MEMBUAT PIN
+            // Tambahkan GraphicsLayer untuk menyimpan pin point
+            var graphicsLayer = new GraphicsLayer({
+              title:"Pin Posisi",
+            });
+            map.add(graphicsLayer);
+            // Fungsi untuk membuat pin point
+            function addPinPoint(longitude, latitude) {
+              // Buat simbol marker sederhana
+              var markerSymbol = new PictureMarkerSymbol({
+                  url: "https://raw.githubusercontent.com/DutyKendartiwastra/PTP-KRA/main/map-pin.png", // URL gambar custom
+                  width: "48px", // Lebar gambar
+                  height: "48px", // Tinggi gambar
+                });
+              // Buat grafik untuk marker
+              var pointGraphic = new Graphic({
+                geometry: {
+                  type: "point",
+                  longitude: longitude,
+                  latitude: latitude
+                },
+                symbol: markerSymbol
+              });
+              // Hapus pin point sebelumnya
+              graphicsLayer.removeAll();
+              // Tambahkan pin point ke layer
+              graphicsLayer.add(pointGraphic);
+            };
+
+        //MENGATUR FUNGSI PADA TOMBOL ZOOM TO  
+          // Dapatkan elemen DOM
+          var toggleBtn = document.getElementById("toggleBtn");
+          var coordinateInput = document.getElementById("coordinateInput");
+          var goToBtn = document.getElementById("goToBtn");
+
+          // Toggle untuk menampilkan atau menyembunyikan input koordinat
+          toggleBtn.addEventListener("click", function () {
+            if (coordinateInput.style.display === "none") {
+              coordinateInput.style.display = "block";
+              toggleBtn.innerText = "Cari Lokasi";
+            } else {
+              coordinateInput.style.display = "none";
+              toggleBtn.innerText = "Cari Lokasi";
+            }
+          });
+          // Event handler untuk tombol Go To
+          goToBtn.addEventListener("click", function () {
+          var latitude = parseFloat(document.getElementById("latitude").value);
+          var longitude = parseFloat(document.getElementById("longitude").value);
+
+          if (!isNaN(latitude) && !isNaN(longitude)) {
+            View.goTo({
+              center: [longitude, latitude],
+              zoom: 17 // Sesuaikan level zoom
+            });
+          // Tambahkan pin point pada lokasi
+          addPinPoint(longitude, latitude);
+          } else {
+            alert("Masukkan nilai koordinat dengan benar.");
+          }
+          });
+
+      // List Layer
+      //map.add(RTRW);
+      //---- sudah di group layer
+      //map.add(BatasAdmin_Kelurahan);
+      //map.add(Batas_Kecamatan);
+      //map.add(BidangSample);
+      //map.add(titiksample);
+      
+      // Legend Muka Peta 1
+      const legend = new Expand({
+          content: new Legend({
+            view: View,
+            style: "classic", // other styles include 'classic/classic'
+            layerInfos: [
+              {
+                layer: BidangSample,
+                title: "Sample Bidang Tanah"
+              },
+              {
+                layer: titiksample,
+                title: "Titik Sample"
+              }
+            ],
+          view: View,
+          expanded: false,
+      })});
+
+      //latihan membuat group layer
+      const groupLayer = new GroupLayer({
+      title: "List Layer",
+      layers: [
+        Batas_Kecamatan,
+        BatasAdmin_Kelurahan,
+        BidangSample,
+        titiksample
+      ]
+      });
+      map.add(groupLayer);
+
+      //Buat Widget Measure
+      const distanceMeasurement = new DistanceMeasurement2D({
+      view: View
+      });
+
+      //Masukkan Widget Measure ke dalam Expand
+      const measureExpand = new Expand({
+        view: View,
+        content: distanceMeasurement,
+        expandIconClass: "esri-icon-measure",
+        mode: "floating"
+      });
+
+      //Expand layer list
+      View.ui.add(new Expand({
+                    content: new LayerList({
+                    view: View,
+                    }),
+              view: View,
+              group: "top-left"}),
+      "top-left");
+      // Gonta-ganti basemap
+      const toggle = new BasemapToggle({
+          view: View,
+          nextBasemap: "hybrid"
+        });
+      //Location Button
+      const locateBtn = new Locate({
+          view: View
+        });
+      //North
+      const compassWidget = new Compass({
+          view: View
+        });
+      //Scale Bar
+      const scaleBar = new ScaleBar({
+          view: View,
+          unit: "dual" // The scale bar displays both metric and non-metric units.
+        });
+
+      //FULL SCREEN
+      fullscreen = new Fullscreen({
+          view: View
+        });
+      View.ui.add(fullscreen, "top-left");
+
+      //SEARCH
+        const searchWidget = new Search({
+          view: View,
+          allPlaceholder: "Cari Berdasarkan",
+          includeDefaultSources: false,
+          sources: [
+            {
+              layer: Batas_Kecamatan,
+              searchFields: ["KEC"],
+              displayField: "KEC",
+              exactMatch: false,
+              outFields: ["KEC"],
+              name: "Kecamatan",
+              zoomScale: 50000,
+              placeholder: "Contoh: JUMANTONO"
+            },
+            {
+              layer: BatasAdmin_Kelurahan,
+              searchFields: ["DESA"],
+              displayField: "DESA",
+              exactMatch: false,
+              outFields: ["DESA"],
+              name: "Desa",
+              zoomScale: 10000,
+              placeholder: "Contoh: NGIJO"
+            },
+            {
+              layer: titiksample,
+              searchFields: ["No_Urut_En"],
+              displayField: "No_Urut_En",
+              exactMatch: false,
+              outFields: ["No_Urut_En"],
+              name: "Nomor Entri",
+              zoomScale: 1000,
+              placeholder: "Contoh: 25"
+            },
+          ]
+        });
+      //Jajaran widget
+        View.ui.add(searchWidget, {position: "top-right"});
+        View.ui.add(locateBtn, {position: "top-left"});
+        View.ui.add(toggle, "bottom-right");
+        View.ui.add(compassWidget, "top-left");
+        View.ui.add(scaleBar, {position: "bottom-right"});
+        View.ui.add(legend, "bottom-right");
+        View.ui.add(measureExpand, "top-left");
+      }
+     )
+    </script>
+    <body>
+      <div id="viewDiv"></div>
+          <div class="toggle-btn" id="toggleBtn" style="color: white;">Cari Lokasi</div>
+          <div class="coordinate-input" id="coordinateInput">
+            <label for="latitude"style="color: white;">Latitude:</label>
+            <input type="text" id="latitude" placeholder="Contoh : -7.1256845"><br>
+            <label for="longitude"style="color: white;">Longitude:</label>
+            <input type="text" id="longitude" placeholder="Contoh : 110.896542"><br>
+            <button id="goToBtn">Zoom To</button>
+          </div>
+      <div id="tooltip" class="tooltip"></div>
+    </body>
+    <body>
+      <div id="sidebar" class="esri-widget">
+        <div id="text">
+            <img src="https://raw.githubusercontent.com/DutyKendartiwastra/Belajar1/main/Foto/LogoBPN.png" top=10px alt="logo" width="40" height="40">
+            <h1 style="font-family:'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif; top: 0px;left:60px;position:absolute;color: azure;font-size:large;">Sample ZNT Karanganyar 2026</h1>
+        </div>
+      </div>
+    </body>
+</body>
+</html>
